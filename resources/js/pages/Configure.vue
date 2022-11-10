@@ -1,5 +1,6 @@
 <template>
     <div>
+
         <Head>
             <title>Configure Import</title>
         </Head>
@@ -8,7 +9,7 @@
 
         <card class="p-8 space-y-4 mb-8">
             <p>
-                We were able to discover <b>{{ headings.length }}</b> column(s) and <b>{{ total_rows }}</b>
+                We were able to discover <b>{{ headings.length}}</b> column(s) and <b>{{ total_rows}}</b>
                 row(s) in your data.
             </p>
 
@@ -22,15 +23,15 @@
                 <table cellpadding="10">
                     <thead class="border-b">
                         <tr>
-                            <th v-for="heading in headings"><span class="font-bold">{{ heading }}</span></th>
+                            <th v-for="heading in headings"><span class="font-bold">{{ heading}}</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="row in rows">
                             <td v-for="col in row">
                                 <code>
-                                    {{ col }}
-                                    <i v-if="! col">null</i>
+                                    {{ col}}
+                                    <i v-if="!col">null</i>
                                 </code>
                             </td>
                         </tr>
@@ -48,7 +49,7 @@
                 <b>Resource:</b>
                 <SelectControl @change="(value) => resource = value" :selected="resource" class="ml-4">
                     <option value="">- Select a resource -</option>
-                    <option v-for="(label, index) in resources" :value="index">{{ label }}</option>
+                    <option v-for="(label, index) in resources" :value="index">{{ label}}</option>
                 </SelectControl>
             </div>
         </card>
@@ -56,12 +57,14 @@
         <card class="p-8 space-y-4">
             <template v-if="resource">
                 <p>
-                    Choose which data to fill the appropriate fields of the chosen resource. The columns from your uploaded
+                    Choose which data to fill the appropriate fields of the chosen resource. The columns from your
+                    uploaded
                     file have been auto-matched to the resource fields with the same name.
                 </p>
 
                 <p v-if="resource">
-                    Use modifiers to modify the value <i>before</i> it gets saved to your resource. Modifiers are combinatory
+                    Use modifiers to modify the value <i>before</i> it gets saved to your resource. Modifiers are
+                    combinatory
                     meaning you can stack them together to do weird and wonderful things with your data
                     (remember what Uncle Ben said, though!) They are executed in the order defined.
                 </p>
@@ -80,23 +83,31 @@
                     <tbody>
                         <tr v-for="field in fields[resource]" class="border-b">
                             <td class="pr-2">
-                                <span class="font-bold">{{ field.name }}</span><br>
-                                <small class="text-grey-300">{{ field.attribute }}</small>
+                                <span class="font-bold">{{ field.name}}</span><br>
+                                <small class="text-grey-300">{{ field.attribute}}</small>
                             </td>
                             <td class="space-y-2">
-                                <SelectControl @change="(value) => mappings[field.attribute] = value" :selected="mappings[field.attribute]">
-                                    <option value="" v-if="field.rules.includes('required')" disabled>- This field is required -</option>
+                                <h1>HI THERE</h1>
+                                <SelectControl @change="(value) => mappings[field.attribute] = value"
+                                    :selected="mappings[field.attribute]">
+                                    <option value="" v-if="field.rules.includes('required')" disabled>- This field is
+                                        required -</option>
                                     <option value="" v-else>- Leave field empty -</option>
 
                                     <optgroup label="File columns">
-                                        <option v-for="heading in headings" :value="heading">{{ heading }}</option>
+                                        <option v-for="heading in headings" :value="heading">{{ heading}}</option>
                                     </optgroup>
 
                                     <optgroup label="Meta data">
-                                        <option value="meta.file">File name (with suffix): {{ file }}</option>
-                                        <option value="meta.file_name">File name (without suffix): {{ file_name }}</option>
-                                        <option value="meta.original_file">Original file name (with suffix): {{ config.original_filename }}</option>
-                                        <option value="meta.original_file_name">Original file name (without suffix): {{ original_file_name }}</option>
+                                        <option value="meta.file">File name (with suffix): {{ file}}</option>
+                                        <option value="meta.file_name">File name (without suffix): {{ file_name}}
+                                        </option>
+                                        <option value="meta.original_file">Original file name (with suffix): {{
+                                                config.original_filename
+                                        }}</option>
+                                        <option value="meta.original_file_name">Original file name (without suffix): {{
+                                                original_file_name
+                                        }}</option>
                                     </optgroup>
 
                                     <optgroup label="Custom - same for all">
@@ -107,44 +118,45 @@
                                 <input v-model="values[field.attribute]" v-if="mappings[field.attribute] === 'custom'"
                                     class="form-control form-input form-input-bordered">
 
-                                <draggable
-                                    v-model="modifiers[field.attribute]"
-                                    handle=".handle"
-                                    item-key="modifier">
+                                <draggable v-model="modifiers[field.attribute]" handle=".handle" item-key="modifier">
 
-                                    <template #item="{ element, index }">
-                                        <div class="flex mb-2 space-x-2 items-start border-rounded bg-gray-50 p-2 handle">
-                                            <span>{{ index + 1 }}</span>
+                                    <template #item="{element, index}">
+                                        <div
+                                            class="flex mb-2 space-x-2 items-start border-rounded bg-gray-50 p-2 handle">
+                                            <span>{{ index + 1}}</span>
                                             <div class="flex flex-col flex-1 space-y-2">
-                                                <SelectControl @change="(value) => element.name = value" :selected="element.name">
+                                                <SelectControl @change="(value) => element.name = value"
+                                                    :selected="element.name">
                                                     <option value="">- Do not modify -</option>
 
-                                                    <option v-for="mod in mods" :value="mod.name">{{ mod.title }}</option>
+                                                    <option v-for="mod in mods" :value="mod.name">{{ mod.title}}
+                                                    </option>
                                                 </SelectControl>
 
                                                 <label v-for="(config, name) in mods[element.name].settings"
-                                                    v-if="mods[element.name]?.settings" class="flex items-center space-x-2"
-                                                >
-                                                    <span>{{ config.title }}</span>
+                                                    v-if="mods[element.name]?.settings"
+                                                    class="flex items-center space-x-2">
+                                                    <span>{{ config.title}}</span>
 
                                                     <SelectControl v-if="config.type === 'select'"
                                                         @change="(value) => element.settings[name] = value"
-                                                        :selected="element.settings[name]"
-                                                    >
+                                                        :selected="element.settings[name]">
                                                         <option v-for="(option, value) of config.options" :value="value"
-                                                            :selected="value === config.default"
-                                                        >
-                                                            {{ option }}
+                                                            :selected="value === config.default">
+                                                            {{ option}}
                                                         </option>
                                                     </SelectControl>
 
-                                                    <input type="text" v-if="config.type === 'string'" v-model="element.settings[name]"
-                                                        class="form-control form-input form-input-bordered ml-4" :placeholder="config.default">
+                                                    <input type="text" v-if="config.type === 'string'"
+                                                        v-model="element.settings[name]"
+                                                        class="form-control form-input form-input-bordered ml-4"
+                                                        :placeholder="config.default">
 
-                                                    <input type="text" v-if="config.type === 'boolean'" v-model="element.settings[name]"
-                                                        class="checkbox" :checked="config.default">
+                                                    <input type="text" v-if="config.type === 'boolean'"
+                                                        v-model="element.settings[name]" class="checkbox"
+                                                        :checked="config.default">
 
-                                                    <div class="help-text">{{ config.help }}</div>
+                                                    <div class="help-text">{{ config.help}}</div>
                                                 </label>
                                             </div>
                                             <button @click="removeModifier(field.attribute, index)">&times;</button>
@@ -153,8 +165,7 @@
                                 </draggable>
 
                                 <button @click="addModifier(field.attribute)" v-if="mappings[field.attribute]"
-                                    class="cursor-pointer rounded text-sm font-bold focus:outline-none focus:ring h-7 px-1 md:px-3"
-                                >
+                                    class="cursor-pointer rounded text-sm font-bold focus:outline-none focus:ring h-7 px-1 md:px-3">
                                     Add modifier
                                 </button>
                             </td>
@@ -168,7 +179,7 @@
                     &leftarrow; Upload a different file
                 </LinkButton>
                 <DefaultButton :disabled="disabledSave" @click="saveConfig">
-                    {{ saving ? 'Importing...' : 'Save &amp; Preview &rightarrow;' }}
+                    {{ saving ? 'Importing...' : 'Save &amp; Preview &rightarrow;'}}
                 </DefaultButton>
             </div>
         </card>
@@ -250,7 +261,7 @@ export default {
         },
 
         saveConfig() {
-            if (! this.hasValidConfiguration()) {
+            if (!this.hasValidConfiguration()) {
                 return;
             }
 
@@ -313,7 +324,7 @@ export default {
 
     computed: {
         disabledSave() {
-            return ! this.hasValidConfiguration() || this.saving;
+            return !this.hasValidConfiguration() || this.saving;
         },
 
         original_file_name() {

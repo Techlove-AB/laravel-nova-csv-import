@@ -12,6 +12,7 @@ use Laravel\Nova\Fields\Field;
 use Laravel\Nova\Rules\Relatable;
 use Laravel\Nova\Actions\ActionResource;
 use Laravel\Nova\Http\Requests\NovaRequest;
+use Log;
 use Maatwebsite\Excel\Concerns\ToModel as ModelImporter;
 
 class ImportController
@@ -43,7 +44,7 @@ class ImportController
 
         $rows = $import->take(10)->all();
 
-        $resources = $this->getAvailableResourcesForImport($request); 
+        $resources = $this->getAvailableResourcesForImport($request);
 
         $fields = $resources->mapWithKeys(function ($resource) use ($request) {
             return $this->getAvailableFieldsForImport($resource, $request);
@@ -64,7 +65,7 @@ class ImportController
     }
 
     /**
-     * 
+     *
      * @throws \Symfony\Component\HttpKernel\Exception\HttpException
      * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
      */
@@ -140,6 +141,7 @@ class ImportController
         $resource_name = $config['resource'];
 
         $resource = Nova::resourceInstanceForKey($resource_name);
+        Log::critical('Error made with: ' . ['resource' => $resource, 'request' => $request]);
         $rules = $this->extractValidationRules($resource, $request)->toArray();
         $model_class = $resource->resource::class;
 
@@ -197,14 +199,16 @@ class ImportController
 
     protected function getAvailableFieldsForImport(string $resource, NovaRequest $request): array
     {
-        $novaResource = new $resource(new $resource::$model);
-        $fieldsCollection = collect($novaResource->creationFields($request));
+        /** @var Resource */
+        $novaResource = new $resource(new $resource::$model());
+        $fieldsCollection = collect($novaResource->availableFields($request));
 
         if (method_exists($novaResource, 'excludeAttributesFromImport')) {
-            $fieldsCollection = $fieldsCollection->filter(function(Field $field) use ($novaResource, $request) {
+            $fieldsCollection = $fieldsCollection->filter(function (Field $field) use ($novaResource, $request) {
                 return !in_array($field->attribute, $novaResource::excludeAttributesFromImport($request));
             });
         }
+
 
         $fields = $fieldsCollection->map(function (Field $field) use ($novaResource, $request) {
             return [
@@ -213,8 +217,8 @@ class ImportController
                 'rules' => $this->extractValidationRules($novaResource, $request)->get($field->attribute),
             ];
         });
-        
-        // Note: ->values() is used here to avoid this array being turned into an object due to 
+
+        // Note: ->values() is used here to avoid this array being turned into an object due to
         // non-sequential keys (which might happen due to the filtering above.
         return [
             $novaResource->uriKey() => $fields->values(),
@@ -233,9 +237,9 @@ class ImportController
             if (!isset($resource::$model)) {
                 return false;
             }
-            
+
             $resourceReflection = (new \ReflectionClass((string) $resource));
-            
+
             if ($resourceReflection->hasMethod('canImportResource')) {
                 return $resource::canImportResource($request);
             }
@@ -243,7 +247,7 @@ class ImportController
             $static_vars = $resourceReflection->getStaticProperties();
 
             if (!isset($static_vars['canImportResource'])) {
-                return true;
+                return false;
             }
 
             return isset($static_vars['canImportResource']) && $static_vars['canImportResource'];
@@ -252,23 +256,32 @@ class ImportController
 
     protected function extractValidationRules(Resource $resource, NovaRequest $request): Collection
     {
-        return collect($resource::rulesForCreation($request))->mapWithKeys(function ($rule, $key) {
-            foreach ($rule as $i => $r) {
-                if (! is_object($r)) {
-                    continue;
-                }
+        // Log::critical('Function called with:', func_get_args());
+        try {
+            if (!empty($resource::rulesForCreation($request))) {
+                return collect($resource::rulesForCreation($request))->mapWithKeys(function ($rule, $key) {
+                    foreach ($rule as $i => $r) {
+                        Log::critical('Rule: ', [$i, $r]);
+                        if (! is_object($r)) {
+                            continue;
+                        }
 
-                // Make sure relation checks start out with a clean query
-                if (is_a($r, Relatable::class)) {
-                    $rule[$i] = function () use ($r) {
-                        $r->query = $r->query->newQuery();
-                        return $r;
-                    };
-                }
+                        // Make sure relation checks start out with a clean query
+                        if (is_a($r, Relatable::class)) {
+                            $rule[$i] = function () use ($r) {
+                                $r->query = $r->query->newQuery();
+                                return $r;
+                            };
+                        }
+                    }
+
+                    return [$key => $rule];
+                });
             }
-
-            return [$key => $rule];
-        });
+        } catch (\Exception $ex) {
+            Log::critical('Exception: ', [$ex]);
+            return collect([]);
+        }
     }
 
     protected function getConfigForFile(string $file): array
@@ -276,7 +289,7 @@ class ImportController
         $config = $this->getDataFromJsonFile($this->getConfigFilePath($file));
 
         $config['values'] = $config['values'] ?? [];
-        $config['modifiers'] = $config['modifiers'] ?? new \stdClass;
+        $config['modifiers'] = $config['modifiers'] ?? new \stdClass();
 
         $original_filename = $config['original_filename'] ?? '';
 

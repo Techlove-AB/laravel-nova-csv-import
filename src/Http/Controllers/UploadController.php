@@ -35,7 +35,7 @@ class UploadController
             $this->importer->toCollection($file);
         } catch (\Exception $e) {
             Log::error('Failed to parse uploaded file', [$e]);
-            
+
             return response()->json(['message' => 'Sorry, we could not import that file'], 422);
         }
 
@@ -43,6 +43,8 @@ class UploadController
             File::hash($file->getRealPath()),
             $file->extension(),
         ]);
+
+        $new_filename = str_replace('.txt', '.csv', $new_filename);
 
         $this->filesystem->putFileAs('csv-import', $file, $new_filename);
 
