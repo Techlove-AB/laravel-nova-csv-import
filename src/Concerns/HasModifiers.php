@@ -9,6 +9,7 @@ use SimonHamp\LaravelNovaCsvImport\Modifiers\Boolean;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\ExcelDate;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\Hash;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\Prefix;
+use SimonHamp\LaravelNovaCsvImport\Modifiers\RelationshipFinder;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\Str as StrModifier;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\Suffix;
 
@@ -22,12 +23,13 @@ trait HasModifiers
     {
         // Register built-in modifiers
         static::registerModifiers(
-            new Boolean,
-            new ExcelDate,
-            new StrModifier,
-            new Hash,
-            new Prefix,
-            new Suffix,
+            new Boolean(),
+            new ExcelDate(),
+            new StrModifier(),
+            new Hash(),
+            new Prefix(),
+            new Suffix(),
+            new RelationshipFinder()
         );
     }
 
