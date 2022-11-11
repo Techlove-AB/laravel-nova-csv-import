@@ -41,7 +41,7 @@ class UploadController
 
         $new_filename = implode('.', [
             File::hash($file->getRealPath()),
-            $file->extension(),
+            $file->getClientOriginalExtension(),
         ]);
 
         $new_filename = str_replace('.txt', '.csv', $new_filename);

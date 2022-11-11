@@ -13,6 +13,9 @@ use SimonHamp\LaravelNovaCsvImport\Http\Middleware\Authorize;
 use SimonHamp\LaravelNovaCsvImport\Http\Controllers\ImportController;
 use SimonHamp\LaravelNovaCsvImport\Http\Controllers\UploadController;
 
+/**
+ * @property \Illuminate\Foundation\Application $app
+ */
 class ToolServiceProvider extends ServiceProvider
 {
     /**
@@ -27,11 +30,10 @@ class ToolServiceProvider extends ServiceProvider
         });
 
         Nova::serving(function (ServingNova $event) {
-
         });
 
         $this->publishes([
-            __DIR__.'/../config/csv-import.php' => config_path('csv-import.php')
+            __DIR__ . '/../config/csv-import.php' => config_path('csv-import.php')
         ], 'csv-import');
     }
 
@@ -48,12 +50,12 @@ class ToolServiceProvider extends ServiceProvider
 
         Nova::router(['nova', Authorize::class], 'csv-import')
             ->namespace(__NAMESPACE__ . '\\Http\\Controllers')
-            ->group(__DIR__.'/../routes/inertia.php');
+            ->group(__DIR__ . '/../routes/inertia.php');
 
         Route::middleware(['nova', Authorize::class])
             ->namespace(__NAMESPACE__ . '\\Http\\Controllers')
             ->prefix('nova-vendor/laravel-nova-csv-import')
-            ->group(__DIR__.'/../routes/api.php');
+            ->group(__DIR__ . '/../routes/api.php');
     }
 
     /**
@@ -63,7 +65,7 @@ class ToolServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/csv-import.php', 'csv-import');
+        $this->mergeConfigFrom(__DIR__ . '/../config/csv-import.php', 'csv-import');
 
         $this->app->when([UploadController::class, ImportController::class])
             ->needs(Filesystem::class)

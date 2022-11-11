@@ -1,8 +1,14 @@
 <?php
 
-namespace SimonHamp\LaravelNovaCsvImport;
+namespace App\Nova\Importer;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Nova\Resource;
 use Maatwebsite\Excel\Concerns\Importable;
@@ -16,13 +22,29 @@ use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithUpserts;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use ReflectionClass;
 use SimonHamp\LaravelNovaCsvImport\Concerns\HasModifiers;
 
-class Importer implements ToModel, WithValidation, WithHeadingRow, WithMapping, WithBatchInserts, WithChunkReading,
-                            SkipsOnFailure, SkipsOnError, SkipsEmptyRows
+class Importer implements
+    ToModel,
+    WithValidation,
+    WithHeadingRow,
+    WithMapping,
+    WithBatchInserts,
+    WithChunkReading,
+    SkipsOnFailure,
+    SkipsOnError,
+    SkipsEmptyRows,
+    WithUpserts
 {
-    use Importable, SkipsFailures, SkipsErrors, HasModifiers;
+    use SkipsFailures;
+    use SkipsErrors;
+    use HasModifiers;
+    use Importable {
+        Importable::toCollection as toCollectionOld;
+    }
 
     /** @var Resource */
     protected $resource;
@@ -31,7 +53,7 @@ class Importer implements ToModel, WithValidation, WithHeadingRow, WithMapping, 
 
     protected $rules;
 
-    protected $model_class;
+    protected string $model_class;
 
     protected $meta_values = [];
 
@@ -50,25 +72,61 @@ class Importer implements ToModel, WithValidation, WithHeadingRow, WithMapping, 
 
         $data = [];
 
+        $model = $this->getModel();
+
         foreach ($this->attribute_map as $attribute => $column) {
             if (! $column) {
                 continue;
             }
 
-            $data[$attribute] = $this->modifyValue(
+            $value = $this->modifyValue(
                 $this->getFieldValue($row, $column, $attribute),
                 $this->getModifiers($attribute)
             );
+
+
+            $data[$attribute] = $value;
         }
 
         return $data;
     }
 
+    /**
+     * Convert the row to a model
+     *
+     * @param array<string,mixed> $row
+     */
     public function model(array $row): Model
     {
+        /** @var Model */
         $model = $this->resource::newModel();
+        $collections = [];
+
+        foreach ($row as $key => $value) {
+            if ($value instanceof Collection) {
+                $collections[$key] = $value;
+                unset($row[$key]);
+            }
+        }
 
         $model->fill($row);
+
+        // Because of what we're about to do with the relationships, we need to make
+        // sure that the record is saved.
+        if (!$model->exists) {
+            $model->save();
+            $model->refresh();
+        }
+
+        if (!empty($collections)) {
+            /** @var Collection[] $collections */
+            foreach ($collections as $key => $collection) {
+                if (!$collection->empty()) {
+                    $this->handleCollection($model, $key, $collection);
+                }
+            }
+        }
+
 
         return $model;
     }
@@ -151,11 +209,49 @@ class Importer implements ToModel, WithValidation, WithHeadingRow, WithMapping, 
         return $this;
     }
 
+    public function getModel(): Model
+    {
+        /** @var Model */
+        $model = $this->resource::newModel();
+
+        return $model;
+    }
+
     public function setResource(Resource $resource): self
     {
         $this->resource = $resource;
 
         return $this;
+    }
+
+    public function uniqueBy(): string
+    {
+        return 'id';
+    }
+
+    protected function handleCollection(Model $model, string $key, Collection $collection): void
+    {
+        if (!method_exists($model, $key)) {
+            return;
+        }
+
+        $returnType = (new ReflectionClass($model))->getMethod($key)->getReturnType();
+        if (!method_exists($returnType, 'getName')) {
+            return;
+        }
+
+        $returnType->getName();
+
+        switch ($returnType->getName()) {
+            case HasMany::class:
+            case BelongsToMany::class:
+            case MorphMany::class:
+            case MorphToMany::class:
+                $model->$key()->attach($collection);
+                break;
+            default:
+                $model->$key()->associate($collection->first());
+        }
     }
 
     protected function getFieldValue(array $row, string $mapping, string $attribute)
@@ -167,5 +263,27 @@ class Importer implements ToModel, WithValidation, WithHeadingRow, WithMapping, 
         } elseif ($mapping === 'custom') {
             return $this->getCustomValues($attribute);
         }
+    }
+
+    /**
+     * @param  string|UploadedFile|null  $filePath
+     * @param  string|null  $disk
+     * @param  string|null  $readerType
+     * @return Collection
+     *
+     * @throws NoFilePathGivenException
+     */
+    public function toCollection($filePath = null, string $disk = null, string $readerType = null): Collection
+    {
+        $filePath = $this->getFilePath($filePath);
+
+        $collection = $this->getImporter()->toCollection(
+            $this,
+            $filePath,
+            $disk ?? $this->disk ?? null,
+            $readerType ?? $this->readerType ?? null
+        );
+
+        return $collection;
     }
 }

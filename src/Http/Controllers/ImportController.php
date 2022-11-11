@@ -113,6 +113,7 @@ class ImportController
             ->setCustomValues($config['values'])
             ->setMeta($config['meta'])
             ->setModifiers($config['modifiers'])
+            ->setResource(Nova::resourceInstanceForKey($resource))
             ->toCollection($this->getFilePath($file), $this->getDisk())
             ->first();
 
@@ -141,7 +142,6 @@ class ImportController
         $resource_name = $config['resource'];
 
         $resource = Nova::resourceInstanceForKey($resource_name);
-        Log::critical('Error made with: ' . ['resource' => $resource, 'request' => $request]);
         $rules = $this->extractValidationRules($resource, $request)->toArray();
         $model_class = $resource->resource::class;
 
@@ -163,6 +163,8 @@ class ImportController
 
         $failures = $this->importer->failures();
         $errors = $this->importer->errors();
+
+        Log::critical("Logged errors:", $errors->toArray());
 
         $results = $this->getResultsFilePath($file);
 
@@ -256,7 +258,6 @@ class ImportController
 
     protected function extractValidationRules(Resource $resource, NovaRequest $request): Collection
     {
-        // Log::critical('Function called with:', func_get_args());
         try {
             if (!empty($resource::rulesForCreation($request))) {
                 return collect($resource::rulesForCreation($request))->mapWithKeys(function ($rule, $key) {
