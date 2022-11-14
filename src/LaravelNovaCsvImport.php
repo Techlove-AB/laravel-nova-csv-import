@@ -16,7 +16,7 @@ class LaravelNovaCsvImport extends Tool
      */
     public function boot()
     {
-        Nova::script('laravel-nova-csv-import', __DIR__.'/../dist/js/tool.js');
+        Nova::script('laravel-nova-csv-import', __DIR__ . '/../dist/js/tool.js');
     }
 
     /**

@@ -121,7 +121,7 @@ class Importer implements
         if (!empty($collections)) {
             /** @var Collection[] $collections */
             foreach ($collections as $key => $collection) {
-                if (!$collection->empty()) {
+                if (!$collection->isEmpty()) {
                     $this->handleCollection($model, $key, $collection);
                 }
             }
