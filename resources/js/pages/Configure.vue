@@ -87,12 +87,10 @@
                                 <small class="text-grey-300">{{ field.attribute}}</small>
                             </td>
                             <td class="space-y-2">
-                                <h1>HI THERE</h1>
                                 <SelectControl @change="(value) => mappings[field.attribute] = value"
                                     :selected="mappings[field.attribute]">
-                                    <option value="" v-if="field.rules.includes('required')" disabled>- This field is
-                                        required -</option>
-                                    <option value="" v-else>- Leave field empty -</option>
+
+                                    <option value="">- Leave field empty -</option>
 
                                     <optgroup label="File columns">
                                         <option v-for="heading in headings" :value="heading">{{ heading}}</option>
@@ -214,6 +212,7 @@ export default {
         'total_rows',
         'config',
         'mods',
+        'defaultModifiers'
     ],
 
     watch: {
@@ -250,6 +249,8 @@ export default {
                     // Because they're an exact match, we don't need to get the exact heading out
                     this.mappings[attribute] = attribute;
                 }
+
+                this.modifiers = this.defaultModifiers;
             },
             deep: true,
         }
@@ -289,6 +290,16 @@ export default {
                 });
 
             this.saving = false;
+        },
+
+        addDefaultModifier(attribute, modifier) {
+            if (Array.isArray(this.modifiers[attribute])) {
+                this.modifiers[attribute].push(
+                    {name: modifier, settings: {}}
+                );
+            } else {
+                this.modifiers[attribute] = [{name: 'modifer', settings: {}}];
+            }
         },
 
         goBack() {

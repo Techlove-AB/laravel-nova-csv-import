@@ -4,6 +4,7 @@ namespace SimonHamp\LaravelNovaCsvImport\Modifiers;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str as LaravelStr;
@@ -44,14 +45,14 @@ class RelationshipFinder implements Modifier
             $toMatch = explode(';', $value);
         }
 
-        $findModel = $settings['model'];
+        $findModel = $settings['model'] ?? $this->getBestMatchingModel($settings);
         if (!class_exists($findModel)) {
             throw new \RuntimeException("Cannot find model $findModel");
         }
 
         /** @var Model $findModel */
 
-        if (function_exists("$findModel::search")) {
+        if (method_exists($findModel, 'search')) {
             $matchedRecords = $findModel::search($toMatch);
         } else {
             $matchedRecords = $findModel::query()->whereIn('name', $toMatch)->get();
@@ -91,5 +92,28 @@ class RelationshipFinder implements Modifier
             $keys,
             $values
         ));
+    }
+
+    protected function getBestMatchingModel(array $settings): string
+    {
+        if (
+            !isset($settings['for_model'])
+            || !isset($settings['key'])
+            || !method_exists($settings['for_model'], $settings['key'])
+        ) {
+            $this->cannotFindSearchRel();
+        }
+
+        /** @var Relation */
+        $relationship = $settings['for_model']->{$settings['key']}();
+
+        $related = $relationship->getRelated();
+
+        return $related::class;
+    }
+
+    protected function cannotFindSearchRel(): void
+    {
+        throw new \RuntimeException('You must specify the model to find the relationship for');
     }
 }

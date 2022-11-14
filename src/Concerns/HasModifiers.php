@@ -4,6 +4,7 @@ namespace SimonHamp\LaravelNovaCsvImport\Concerns;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Log;
 use SimonHamp\LaravelNovaCsvImport\Contracts\Modifier;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\Boolean;
 use SimonHamp\LaravelNovaCsvImport\Modifiers\ExcelDate;
@@ -59,7 +60,15 @@ trait HasModifiers
     public function getModifiers($key = null): array
     {
         if ($key) {
-            return $this->modifiers[$key] ?? [];
+            $modifiers = $this->modifiers[$key] ?? [];
+            foreach ($modifiers as &$modifier) {
+                $modifier['settings'] = $modifier['settings'] ?? [];
+                $modifier['settings']['key'] = $key;
+                if (method_exists($this, 'getModel')) {
+                    $modifier['settings']['for_model'] = $this->getModel();
+                }
+            }
+            return $modifiers;
         }
 
         return $this->modifiers;

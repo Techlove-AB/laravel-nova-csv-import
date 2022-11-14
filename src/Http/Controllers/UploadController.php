@@ -34,8 +34,6 @@ class UploadController
         try {
             $this->importer->toCollection($file);
         } catch (\Exception $e) {
-            Log::error('Failed to parse uploaded file', [$e]);
-
             return response()->json(['message' => 'Sorry, we could not import that file'], 422);
         }
 

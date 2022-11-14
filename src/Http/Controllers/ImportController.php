@@ -11,9 +11,12 @@ use Laravel\Nova\Resource;
 use Laravel\Nova\Fields\Field;
 use Laravel\Nova\Rules\Relatable;
 use Laravel\Nova\Actions\ActionResource;
+use Laravel\Nova\Contracts\RelatableField;
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Log;
 use Maatwebsite\Excel\Concerns\ToModel as ModelImporter;
+use SimonHamp\LaravelNovaCsvImport\Modifiers\RelationshipFinder;
+use Str;
 
 class ImportController
 {
@@ -58,9 +61,31 @@ class ImportController
 
         $mods = $this->importer->getAvailableModifiers();
 
+        $defaultModifiers = [];
+
+        foreach ($fields as $fieldz) {
+            foreach ($fieldz as $field) {
+                if (isset($field['modifiers'])) {
+                    $defaultModifiers[$field['attribute']] = $field['modifiers'];
+                    unset($field['modifiers']);
+                }
+            }
+        }
+
         return inertia(
             'CsvImport/Configure',
-            compact('file', 'file_name', 'resources', 'fields', 'rows', 'total_rows', 'headings', 'config', 'mods')
+            compact(
+                'file',
+                'file_name',
+                'resources',
+                'fields',
+                'rows',
+                'total_rows',
+                'headings',
+                'config',
+                'mods',
+                'defaultModifiers'
+            )
         );
     }
 
@@ -164,8 +189,6 @@ class ImportController
         $failures = $this->importer->failures();
         $errors = $this->importer->errors();
 
-        Log::critical("Logged errors:", $errors->toArray());
-
         $results = $this->getResultsFilePath($file);
 
         $this->filesystem->delete($results);
@@ -213,11 +236,19 @@ class ImportController
 
 
         $fields = $fieldsCollection->map(function (Field $field) use ($novaResource, $request) {
-            return [
+            $fieldData = [
                 'name' => $field->name,
                 'attribute' => $field->attribute,
                 'rules' => $this->extractValidationRules($novaResource, $request)->get($field->attribute),
             ];
+
+            if ($field instanceof RelatableField) {
+                $fieldData['modifiers'] = [
+                    ['name' => Str::snake(Str::afterLast(RelationshipFinder::class, '\\')), 'settings' => []]
+                ];
+            }
+
+            return $fieldData;
         });
 
         // Note: ->values() is used here to avoid this array being turned into an object due to
@@ -262,7 +293,6 @@ class ImportController
             if (!empty($resource::rulesForCreation($request))) {
                 return collect($resource::rulesForCreation($request))->mapWithKeys(function ($rule, $key) {
                     foreach ($rule as $i => $r) {
-                        Log::critical('Rule: ', [$i, $r]);
                         if (! is_object($r)) {
                             continue;
                         }
@@ -280,7 +310,6 @@ class ImportController
                 });
             }
         } catch (\Exception $ex) {
-            Log::critical('Exception: ', [$ex]);
             return collect([]);
         }
     }
