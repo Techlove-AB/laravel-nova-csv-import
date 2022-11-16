@@ -26,7 +26,7 @@ class RelationshipFinder implements Modifier
 
     public function settings(): array
     {
-        $availableModels = $this->getAvailableModels()->toArray();
+        $availableModels = ['' => ''] + $this->getAvailableModels()->toArray();
         return [
             'model' => [
                 'type' => 'select',
