@@ -3,12 +3,13 @@
 namespace SimonHamp\LaravelNovaCsvImport;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Nova\Resource;
 use Maatwebsite\Excel\Concerns\Importable;
@@ -110,6 +111,11 @@ class Importer implements
         }
 
         $model->fill($row);
+        foreach ($collections as $key => $collection) {
+            if (!$collection->isEmpty()) {
+                $this->handleCollection($model, $key, $collection, true);
+            }
+        }
 
         // Because of what we're about to do with the relationships, we need to make
         // sure that the record is saved.
@@ -229,8 +235,12 @@ class Importer implements
         return 'id';
     }
 
-    protected function handleCollection(Model $model, string $key, Collection $collection): void
-    {
+    protected function handleCollection(
+        Model $model,
+        string $key,
+        Collection $collection,
+        bool $beforeSave = false
+    ): void {
         if (!method_exists($model, $key)) {
             return;
         }
@@ -247,10 +257,21 @@ class Importer implements
             case BelongsToMany::class:
             case MorphMany::class:
             case MorphToMany::class:
-                $model->$key()->attach($collection);
+                if (!$beforeSave) {
+                    $model->$key()->attach($collection);
+                }
+                break;
+            case BelongsTo::class:
+            case MorphTo::class:
+                if ($beforeSave) {
+                    $model->$key()->associate($collection->first());
+                }
                 break;
             default:
-                $model->$key()->associate($collection->first());
+                if (!$beforeSave) {
+                    $model->$key()->associate($collection->first());
+                }
+                break;
         }
     }
 
