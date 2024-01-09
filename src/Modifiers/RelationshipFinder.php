@@ -32,10 +32,18 @@ class RelationshipFinder implements Modifier
                 'type' => 'select',
                 'options' => $availableModels,
             ],
+            'single' => [
+                'type' => 'select',
+                'options' => [
+                    'true' => __('Yes'),
+                    'false' => __('No'),
+                ],
+                'default' => 'true',
+            ],
         ];
     }
 
-    public function handle($value = null, array $settings = []): Collection
+    public function handle($value = null, array $settings = []): Collection|Model
     {
         $toMatch = [];
 
@@ -50,12 +58,16 @@ class RelationshipFinder implements Modifier
             throw new \RuntimeException("Cannot find model $findModel");
         }
 
+        $single = $settings['single'] ?? false;
+        
         /** @var Model $findModel */
 
         if (method_exists($findModel, 'search')) {
-            $matchedRecords = $findModel::search($toMatch);
+            $matchedRecords = $findModel::search($single == true ? $value : $toMatch);
         } else {
-            $matchedRecords = $findModel::query()->whereIn('name', $toMatch)->get();
+            $matchedRecords = $single == true ?
+                $findModel::query()->whereIn('name', $value)->first() :
+                $findModel::query()->whereIn('name', $toMatch)->get();
         }
 
         return $matchedRecords ?? collect([]);
