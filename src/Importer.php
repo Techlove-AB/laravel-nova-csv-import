@@ -102,10 +102,15 @@ class Importer implements
         /** @var Model */
         $model = $this->resource::newModel();
         $collections = [];
+        $models = [];
 
         foreach ($row as $key => $value) {
             if ($value instanceof Collection) {
                 $collections[$key] = $value;
+                unset($row[$key]);
+            }
+            if ($value instanceof Model) {
+                $models[$key] = $value;
                 unset($row[$key]);
             }
         }
@@ -115,6 +120,10 @@ class Importer implements
             if (!$collection->isEmpty()) {
                 $this->handleCollection($model, $key, $collection, true);
             }
+        }
+
+        foreach ($models as $attribute => $modelToAssociate) {
+            $model->$attribute()->associate($modelToAssociate);
         }
 
         // Because of what we're about to do with the relationships, we need to make
